@@ -1,0 +1,13 @@
+altair
+boto3
+kafka-python
+numpy
+pandas
+pillow
+pyspark
+python-dotenv
+streamlit
+torch
+transformers
+wordcloud
+zstandard
