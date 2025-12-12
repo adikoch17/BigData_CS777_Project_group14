@@ -9,7 +9,7 @@ from kafka import KafkaProducer
 
 load_dotenv()
 
-# Data is stored under term-paper/data/sample by default
+
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA = ROOT / "data" / "sample" / "clean.csv"
 DATA_PATH = Path(os.getenv("PRODUCER_CSV", DEFAULT_DATA))
@@ -25,8 +25,8 @@ producer = KafkaProducer(
 
 df = pd.read_csv(DATA_PATH)
 
-# Shuffle the rows so messages are sent in a random order each run
 df = df.sample(frac=1).reset_index(drop=True)
+df['content'] = df['content'].str.replace('[removed]', '', regex=False)
 
 for index, row in df.iterrows():
     title = "" if pd.isna(row["title"]) else str(row["title"])
@@ -45,6 +45,6 @@ for index, row in df.iterrows():
     producer.send(TOPIC, data)
     producer.flush()
     print("Sent JSON:", data)
-    time.sleep(1)
+    time.sleep(3)
 
 producer.close()

@@ -1,6 +1,7 @@
 import html
 import json
 import os
+import re
 import time
 from collections import Counter
 from pathlib import Path
@@ -12,6 +13,12 @@ import streamlit as st
 from dotenv import load_dotenv
 from kafka import KafkaConsumer
 from wordcloud import STOPWORDS, WordCloud
+
+# POS tagging for word cloud filtering
+try:
+    import nltk
+except ImportError:
+    nltk = None
 
 # Optional .env override, otherwise defaults below are used
 load_dotenv()
@@ -117,6 +124,63 @@ def emotion_emoji(emotion: str) -> str:
     return EMOJI_MAP.get(key, DEFAULT_EMOJI) if key else DEFAULT_EMOJI
 
 
+ALLOWED_POS_TAGS = {"JJ", "JJR", "JJS", "NNP", "NNPS"}
+
+
+def _ensure_nltk_tagger() -> bool:
+    """Ensure the NLTK POS tagger data is available; download quietly if missing."""
+    if nltk is None:
+        return False
+
+    resources = [
+        "taggers/averaged_perceptron_tagger",
+        "taggers/averaged_perceptron_tagger_eng",
+    ]
+    for resource in resources:
+        try:
+            nltk.data.find(resource)
+            return True
+        except LookupError:
+            continue
+
+    # Attempt to download if not present; ignore failures and fall back gracefully
+    for package in ("averaged_perceptron_tagger", "averaged_perceptron_tagger_eng"):
+        try:
+            nltk.download(package, quiet=True)
+        except Exception:
+            pass
+
+    for resource in resources:
+        try:
+            nltk.data.find(resource)
+            return True
+        except LookupError:
+            continue
+
+    return False
+
+
+def extract_descriptive_terms(text: str) -> str:
+    """Return a space-joined string of adjectives and proper nouns from input text."""
+    tokens = re.findall(r"[A-Za-z][A-Za-z'_-]*", text)
+    if not tokens:
+        return ""
+
+    if nltk is None:
+        return " ".join(tokens)
+
+    if not _ensure_nltk_tagger():
+        return " ".join(tokens)
+
+    try:
+        tagged = nltk.pos_tag(tokens)
+    except Exception:
+        return " ".join(tokens)
+
+    filtered = [word for word, tag in tagged if tag in ALLOWED_POS_TAGS]
+    return " ".join(filtered)
+
+
 def render_card(entry: Dict[str, Any]):
     """Render a single message as a card with emoji, meta, and text."""
     emoji = emotion_emoji(entry.get("emotion", ""))
@@ -213,18 +277,19 @@ def main():
                         entry.get("text", "") or "" for entry in st.session_state.messages[-100:]
                     ]
                     combined_text = " ".join(recent_texts).strip()
-                    if combined_text:
+                    filtered_text = extract_descriptive_terms(combined_text)
+                    if filtered_text:
                         wc = WordCloud(
                             width=1000,
                             height=400,
                             background_color="white",
                             stopwords=STOPWORDS,
                             max_words=200,
-                        ).generate(combined_text)
+                        ).generate(filtered_text)
                         wordcloud_placeholder.image(wc.to_array(), use_column_width=True)
                     else:
                         wordcloud_placeholder.info(
-                            "Waiting for text to build the word cloud..."
+                            "Waiting for adjectives and proper nouns to build the word cloud..."
                         )
                 else:
                     chart_placeholder.info("Waiting for messages to show emotion distribution...")
@@ -252,7 +317,10 @@ def main():
         if df is None:
             st.error(f"Could not find {PREDICTION_CSV_PATH}.")
             return
-
+        df['content'] = df['content'].str.replace('[removed]', '', regex=False)
+        df['content'] = df['content'].str.replace('[deleted]', '', regex=False)
+        df['title'] = df['title'].str.replace('[removed]', '', regex=False)
+        df['title'] = df['title'].str.replace('[deleted]', '', regex=False)
         # Filters
         subreddits = sorted([s for s in df["subreddit"].dropna().unique()])
         emotions = sorted(df["emotion"].dropna().unique())
@@ -295,10 +363,9 @@ def main():
                 | filtered["content"].fillna("").str.lower().str.contains(q)
             ]
 
-        c1, c2, c3 = st.columns(3)
+        c2, c3 = st.columns(2)
         avg_conf = filtered["pred_confidence"].mean() if len(filtered) else 0.0
         avg_len = filtered["text_len"].mean() if len(filtered) else 0.0
-        c1.metric("Rows", len(filtered))
         c2.metric("Avg confidence", f"{avg_conf:.3f}")
         c3.metric("Avg text length", f"{avg_len:.0f}")
 

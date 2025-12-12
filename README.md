@@ -22,9 +22,9 @@ requirements.txt
 ```
 
 ## Data
-- `term-paper/data/city_submissions`: raw NDJSON exports per city (e.g., Boston, Miami, Phoenix, Philadelphia). Fields are straight from Pushshift/Reddit dumps.
-- `term-paper/data/sample/clean.csv`: cleaned subset with `subreddit, created, title, content, text`.
-- `term-paper/data/sample/Roberta_Prediction.csv`: cleaned subset + `pred_label (0-5), pred_emotion, pred_confidence`.
+- `term-project/data/city_submissions`: raw NDJSON exports per city sourced from the Pushshift top-40k subreddit dump ([link](https://www.reddit.com/r/pushshift/comments/1itme1k/separate_dump_files_for_the_top_40k_subreddits/)). Cities included: Austin, Boston, Chicago, Dallas, Houston, Los Angeles, Miami, NYC, Orlando, Philadelphia, Phoenix, San Diego, San Francisco, Seattle, Washington DC. The raw pull was ~45 GB of NDJSON before Spark cleaning/filtering it down to 5M+ rows.
+- `term-project/data/sample/clean.csv`: cleaned subset with `subreddit, created, title, content, text`.
+- `term-project/data/sample/Roberta_Prediction.csv`: cleaned subset + `pred_label (0-5), pred_emotion, pred_confidence`.
 
 ## Environment & Install
 Python 3.10+ recommended.

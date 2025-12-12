@@ -1,6 +1,7 @@
 altair
 boto3
 kafka-python
+nltk
 numpy
 pandas
 pillow
