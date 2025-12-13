@@ -1,6 +1,7 @@
 # Reddit City Emotion Pipeline
 
 End-to-end pipeline that ingests Reddit submissions, cleans them with Spark, classifies emotions with a fine-tuned RoBERTa/GoEmotions model, and surfaces both historical and live trends by city. Runs across AWS and GCP (S3 + Spark + EC2/Kafka + EC2 inference) and streams to a streamlit dashboard.
+Demo video (dashboard walk-through): [images/demo_video/output.mp4](images/demo_video/output.mp4)
 
 ## Repo Layout 
 ```
